@@ -552,6 +552,7 @@ ExprPtr expand_A_op(const ProductPtr& product) {
 
   // Check A and build replacement map
   container::svector<container::map<Index, Index>> map_list;
+  Tensor A_tensor;
   for (auto& term : product) {
     if (term->is<Tensor>()) {
       auto A = term->as<Tensor>();
@@ -559,6 +560,7 @@ ExprPtr expand_A_op(const ProductPtr& product) {
         return remove_tensor(product, L"A");
       } else if ((A.label() == L"A")) {
         has_A_operator = true;
+        A_tensor = A;
         map_list = A_maps(A);
         break;
       }
@@ -566,6 +568,9 @@ ExprPtr expand_A_op(const ProductPtr& product) {
   }
 
   if (!has_A_operator) return product;
+
+  const auto nf = ex<Constant>(rational{
+      1, (factorial(A_tensor.bra_rank()) + factorial(A_tensor.ket_rank()))});
 
   auto new_result = std::make_shared<Sum>();
   for (auto&& map : map_list) {
@@ -593,6 +598,7 @@ ExprPtr expand_A_op(const ProductPtr& product) {
       }
     }
     new_product->scale(phase);
+    new_product->append(1, nf);
     new_result->append(new_product);
   }  // map_list
 
@@ -633,6 +639,8 @@ ExprPtr symmetrize_expr(const ProductPtr& product) {
     S = Tensor(L"S", bra(std::move(bra_list)), ket(std::move(ket_list)),
                A_tensor.aux(), Symmetry::Nonsymm);
   }
+  const auto nf = ex<Constant>(rational{1, factorial(S.ket_rank())});
+  std::wcout << "symmetrize_expr nf: " << to_latex_align(nf) << std::endl;
 
   // Generate replacement maps from a list of Index type (could be a bra or a
   // ket)
@@ -681,6 +689,7 @@ ExprPtr symmetrize_expr(const ProductPtr& product) {
     Product new_product{};
     new_product.scale(product->scalar());
     new_product.append(get_phase(map), ex<Tensor>(S));
+    new_product.append(1, nf);
     auto temp_product = remove_tensor(product, L"A");
     for (auto&& term : *temp_product) {
       if (term->is<Tensor>()) {
@@ -865,17 +874,23 @@ ExprPtr S_maps(const ExprPtr& expr) {
 
     container::svector<container::map<Index, Index>> maps;
     // supports arbitrary sequence and variables
+    Tensor S_tensor;
     for (auto&& factor : product->factors()) {
       if (factor->is<Tensor>() && factor->as<Tensor>().label() == L"S") {
+        S_tensor = factor->as<Tensor>();
         maps = S_replacement_maps(factor->as<Tensor>());
         break;
       }
     }
     SEQUANT_ASSERT(!maps.empty());
+
+    const auto nf = ex<Constant>(rational{1, factorial(S_tensor.ket_rank())});
+
     Sum sum{};
     for (auto&& map : maps) {
       ProductPtr new_product = std::make_shared<Product>();
       new_product->scale(product->scalar());
+      new_product->append(1, nf);
       auto temp_product = remove_tensor(product, L"S").as_shared_ptr<Product>();
       for (auto&& term : temp_product) {
         if (term->is<Tensor>()) {
@@ -1182,15 +1197,16 @@ ExprPtr closed_shell_CC_spintrace_v2(ExprPtr const& expr,
         ex<Tensor>(Tensor{L"S", bra(std::move(kixs)), ket(std::move(bixs))}) *
         st_expr;
 
-    rational combined_factor;
-    if (ext_idxs.size() <= 2) {
-      combined_factor = rational(1, factorial(ext_idxs.size()));
-    } else {
-      auto fact_n = factorial(ext_idxs.size());
-      combined_factor =
-          rational(1, fact_n - 1);  // this is (1/fact_n) * (fact_n/(fact_n-1))
-    }
-    st_expr = ex<Constant>(combined_factor) * st_expr;
+    // rational combined_factor;
+    // if (ext_idxs.size() <= 2) {
+    // combined_factor = rational(1, factorial(ext_idxs.size()));
+    // } else {
+    //   auto fact_n = factorial(ext_idxs.size());
+    //   combined_factor =
+    //       rational(1, fact_n - 1);  // this is (1/fact_n) *
+    //       (fact_n/(fact_n-1))
+    // }
+    // st_expr = ex<Constant>(combined_factor) * st_expr;
   }
 
   simplify(st_expr);
@@ -1951,6 +1967,8 @@ ExprPtr factorize_S(const ExprPtr& expression,
     // else continue
     [[maybe_unused]] int n_symm_terms = 0;
     auto symm_factor = factorial(S.bra_rank());
+    std::wcout << "symm factor for factorize_S: " << to_latex(symm_factor)
+               << std::endl;
     for (auto it = expr->begin(); it != expr->end(); ++it) {
       // Exclude summand with value zero
       while ((*it)->hash_value() == ex<Constant>(0)->hash_value()) {
@@ -1964,8 +1982,9 @@ ExprPtr factorize_S(const ExprPtr& expression,
       summands_hash_list.erase(std::find(summands_hash_list.begin(),
                                          summands_hash_list.end(), hash0));
       auto new_product = (*it)->clone();
-      new_product =
-          ex<Constant>(rational{1, symm_factor}) * ex<Tensor>(S) * new_product;
+      new_product = ex<Constant>(symm_factor) * ex<Tensor>(S) * new_product;
+      std::wcout << "new product factorize_S: " << to_latex(new_product)
+                 << std::endl;
 
       // CONTAINER OF HASH VALUES AND SYMMETRIZED TERMS
       // FOR GENERALIZED EXPRESSION WITH ARBITRARY S OPERATOR
@@ -2027,7 +2046,10 @@ ExprPtr factorize_S(const ExprPtr& expression,
       if (n_hash_found == hash1_list.size()) {
         // Prepend S operator
         // new_product = ex<Tensor>(S) * new_product;
-        new_product = ex<Constant>(symm_factor) * new_product;
+        // new_product = ex<Constant>(symm_factor) * new_product;
+        // std::wcout << "second new product for factorize_S: " <<
+        // to_latex(new_product) << std::endl;
+
         ++n_symm_terms;
 
         // remove values from hash1_list from summands_hash_list
