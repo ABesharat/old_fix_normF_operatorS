@@ -1000,10 +1000,12 @@ SECTION("Closed-shell CC spintrace for variable, constant, product") {
                                      Symmetry::Antisymm);
 
     auto result_v1 = mbpt::closed_shell_CC_spintrace_v1(expr1);
-    REQUIRE_THAT(result_v1, EquivalentTo(L"-ω S{i1,i2;a1,a2} t{a1,a2;i1,i2}"));
+    REQUIRE_THAT(result_v1,
+                 EquivalentTo(L"-2 ω S{i1,i2;a1,a2} t{a1,a2;i1,i2}"));
 
     auto result_v2 = mbpt::closed_shell_CC_spintrace_v2(expr1);
-    REQUIRE_THAT(result_v2, EquivalentTo(L"-ω S{i1,i2;a1,a2} t{a1,a2;i1,i2}"));
+    REQUIRE_THAT(result_v2,
+                 EquivalentTo(L"-2 ω S{i1,i2;a1,a2} t{a1,a2;i1,i2}"));
   }
   {  // test a single variable
     auto expr1 = sequant::parse_expr(L"ω");
@@ -1151,7 +1153,7 @@ SECTION("Closed-shell spintrace CCSDT terms") {
     REQUIRE_THAT(
         result,
         EquivalentTo(
-            L"2 S{i_1,i_2,i_3;a_1,a_2,a_3}:N-C-S * "
+            L"12 S{i_1,i_2,i_3;a_1,a_2,a_3}:N-C-S * "
             "g{a_1,a_2;a_4,a_5}:N-C-S * t{a_3,a_4,a_5;i_3,i_1,i_2}:N-C-S"));
   }
 
@@ -1166,12 +1168,13 @@ SECTION("Closed-shell spintrace CCSDT terms") {
     REQUIRE_THAT(
         result,
         EquivalentTo(
-            L"-4/5 S{i_1,i_2,i_3;a_1,a_2,a_3}:N-C-S * g{a_1,a_2;a_4,a_5}:N-C-S "
-            L"* t{a_3,a_4,a_5;i_1,i_2,i_3}:N-C-S + 2"
+            L"-24/5 S{i_1,i_2,i_3;a_1,a_2,a_3}:N-C-S * "
+            L"g{a_1,a_2;a_4,a_5}:N-C-S "
+            L"* t{a_3,a_4,a_5;i_1,i_2,i_3}:N-C-S + 12"
             " S{i_1,i_2,i_3;a_1,a_2,a_3}:N-C-S * g{a_1,a_2;a_4,a_5}:N-C-S * "
-            "t{a_3,a_4,a_5;i_3,i_1,i_2}:N-C-S - 2/5"
+            "t{a_3,a_4,a_5;i_3,i_1,i_2}:N-C-S - 12/5"
             " S{i_1,i_2,i_3;a_1,a_2,a_3}:N-C-S * g{a_1,a_2;a_4,a_5}:N-C-S * "
-            "t{a_3,a_4,a_5;i_3,i_2,i_1}:N-C-S - 4/5"
+            "t{a_3,a_4,a_5;i_3,i_2,i_1}:N-C-S - 24/5"
             " S{i_1,i_2,i_3;a_1,a_2,a_3}:N-C-S * g{a_1,a_2;a_4,a_5}:N-C-S * "
             "t{a_3,a_4,a_5;i_2,i_1,i_3}:N-C-S"));
   }
